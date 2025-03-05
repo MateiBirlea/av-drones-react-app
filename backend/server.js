@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import express from "express";
 import mysql from 'mysql2';
 import cors from "cors";  
@@ -7,6 +9,9 @@ import { Server } from "socket.io";
 import { fileURLToPath } from 'url';
 import http from "http";
 import crypto from 'node:crypto';
+
+
+
 
 const app = express();
 function hashPassword(password) {
@@ -31,11 +36,18 @@ const uploadsDir = path.join(__dirname, 'uploads');
 app.use('/uploads', express.static(uploadsDir));
 
 
-const db = mysql.createConnection({
-    user: "root",
-    host: "localhost",
-    password: "stefanmr",
-    database: "d_site",
+console.log("Database URL:", process.env.DATABASE_URL);
+
+
+
+const db = mysql.createConnection(process.env.DATABASE_URL);
+
+db.connect(err => {
+    if (err) {
+        console.error(" Database connection failed: " + err.stack);
+        return;
+    }
+    console.log(" Connected to Railway MySQL!");
 });
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -56,45 +68,43 @@ const storage = multer.diskStorage({
     }
   
    
-    const fileUrl = `http://localhost:8081/uploads/${req.file.filename}`;
+    const fileUrl = `http://av-drones-react-backend-production.up.railway.app/uploads/${req.file.filename}`;
     
    
     res.json({ url: fileUrl });
   });
 
-app.post('/register', (req, res) => {
+  app.post('/register', (req, res) => {
     const firstn = req.body.firstn;
     const lastn = req.body.lastn;
     const email = req.body.email;
     const password = req.body.password;
-    const hash=hashPassword(password);
-    if (!firstn || !lastn || !email || !password) {
-        return res.status(400).json({ error: "First name, last name, email, and password are all required." });
-    }
-    
-   
-    const query = "INSERT INTO user(name, prenume,email,password_hash) VALUES (?, ?, ?, ?)";
-    const query1 = "SELECT * FROM user WHERE email= ?";
+    const hash = hashPassword(password);
 
-    
+    console.log("Received data:", req.body);
+
+    const query1 = "SELECT * FROM user WHERE email = ?";
+    const query2 = "INSERT INTO user(name, prenume, email, password_hash) VALUES (?, ?, ?, ?)";
+
     db.query(query1, [email], (err, result) => {
         if (err) {
-            console.error("Database error:", err);
-            return res.status(500).json({ error: "Database error occurred while checking email." });
+            console.error("❌ Database error on SELECT:", err);
+            return res.status(500).json({ error: "Database error on SELECT", details: err });
         }
 
-       
+        console.log("SELECT result:", result);
+
         if (result.length > 0) {
             return res.status(200).json({ message: "Email already taken", error: true });
         }
 
-       
-        db.query(query, [firstn, lastn, email,hash], (err, result) => {
+        db.query(query2, [firstn, lastn, email, hash], (err, result) => {
             if (err) {
-                console.error("Database error:", err);
-                return res.status(500).json({ error: "Failed to insert data into the database." });
+                console.error("❌ Database error on INSERT:", err);
+                return res.status(500).json({ error: "Database error on INSERT", details: err });
             }
 
+            console.log("✅ User registered:", email);
             return res.status(201).json({ message: "Registration successful!" });
         });
     });
@@ -345,7 +355,7 @@ app.post("/accept_friendship",(req,res)=>{
 app.post("/delete_friend",(req,res)=>{
     const username1=req.body.username1;
     const username2=req.body.username2;
-    db.query("DELETE FROM friends WHERE username1=? AND username2=?",[username1,username2],(err,result)=>{
+    db.query("DELETE FROM friends WHERE (username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",[username1,username2,username2,username1],(err,result)=>{
         if(err)
         {
             return res.status(500).json({ error: "Database error" });
@@ -521,7 +531,11 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(8081, () => {
-    console.log('Backend server is running on http://localhost:8081');
+    console.log('Backend server is running on http://av-drones-react-backend-production.up.railway.app');
+});
+db.ping((err) => {
+    if (err) console.error("❌ MySQL connection lost:", err);
+    else console.log("✅ MySQL is still connected.");
 });
 
 

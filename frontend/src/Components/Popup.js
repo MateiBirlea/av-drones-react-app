@@ -54,7 +54,7 @@ const Popup = ({ onClose }) => {
     else
     {
       
-      Axios.post('http://localhost:8081/verify_friend_request',{
+      Axios.post('https://av-drones-react-backend-production.up.railway.app/verify_friend_request',{
         id_sender:id,
         username_receiver:selectedUser,
         username_sender:username
@@ -62,7 +62,7 @@ const Popup = ({ onClose }) => {
         if(response.data.message)
         {
           console.log("Mesaj",response.data.message);
-          Axios.post('http://localhost:8081/add_friend',{
+          Axios.post('https://av-drones-react-backend-production.up.railway.app/add_friend',{
             id_sender: id,
             username_reciver:selectedUser
            }).then((response)=>{
@@ -90,7 +90,9 @@ const Popup = ({ onClose }) => {
       
     }
   }
- 
+ const refresh_pagina=()=>{
+  window.location.href = window.location.href;
+ }
   const handleSelect=(user)=>{
       setSelectedUser(user.username);
       const profile=localStorage.getItem('user');
@@ -114,7 +116,7 @@ const Popup = ({ onClose }) => {
     }
 
     try {
-      const response = await fetch(`http://localhost:8081/api/search-user?query=${encodeURIComponent(searchQuery)}`);
+      const response = await fetch(`https://av-drones-react-backend-production.up.railway.app/api/search-user?query=${encodeURIComponent(searchQuery)}`);
       const data = await response.json();
       setResults(data); 
     } catch (error) {
@@ -140,7 +142,7 @@ const Popup = ({ onClose }) => {
     const formData = new FormData();
     formData.append('profileImage', file);
     try {
-      const response = await axios.post('http://localhost:8081/upload', formData, {
+      const response = await axios.post('https://av-drones-react-backend-production.up.railway.app/upload', formData, {
           headers: {
               'Content-Type': 'multipart/form-data',
           },
@@ -153,7 +155,7 @@ const Popup = ({ onClose }) => {
       parseduser.profile=response.data.url;
       localStorage.setItem('user',JSON.stringify(parseduser));
       console.log('Email:',parseduser.email);
-       await Axios.post('http://localhost:8081/profile_set',{
+       await Axios.post('https://av-drones-react-backend-production.up.railway.app/profile_set',{
         emailn:parseduser.email,
         urln:response.data.url
       }).then((response)=>{
@@ -163,7 +165,7 @@ const Popup = ({ onClose }) => {
         }else if(response.data.message)
            {
               console.log(response.data.message);
-              
+              window.location.href = window.location.href;
            }
       })
   } catch (error) {
@@ -171,9 +173,21 @@ const Popup = ({ onClose }) => {
   }
   
 };
-const handleFileChange = (event) => {
-  image_upload(event).then(() => counterIncrement()); 
+const handleFileChange = async (event) => {
+  await image_upload(event); // Încarcă imaginea
+
+  setTimeout(() => {
+    document.getElementById("refresh-link").href = window.location.href;
+    document.getElementById("refresh-link").click(); // Forțează refresh
+  }, 1000); // După 1 secundă
 };
+const forceRefresh = () => {
+  setTimeout(() => {
+    window.location.href = window.location.href;
+  }, 1500); // Refresh după 1.5 secunde
+};
+
+
 
   useEffect(()=>{
        const profile=localStorage.getItem('user');
@@ -191,7 +205,7 @@ const handleFileChange = (event) => {
   },[counter])
  
   const delete_request =(sender)=>{
-    Axios.post('http://localhost:8081/delete_request',{
+    Axios.post('https://av-drones-react-backend-production.up.railway.app/delete_request',{
       username_sender:sender,
       id_receiver:id
     }).then((response)=>{
@@ -199,7 +213,7 @@ const handleFileChange = (event) => {
     });
   }
   const delete_friend=(user)=>{
-    Axios.post('http://localhost:8081/delete_friend',{
+    Axios.post('https://av-drones-react-backend-production.up.railway.app/delete_friend',{
       username1:username,
       username2:user
     }).then((response)=>{
@@ -210,7 +224,7 @@ const handleFileChange = (event) => {
     })
   }
   const accept_friendship=(username21,profile21)=>{
-    Axios.post('http://localhost:8081/accept_friendship',{
+    Axios.post('https://av-drones-react-backend-production.up.railway.app/accept_friendship',{
       username1:username,
       profile1:url,
       username2:username21,
@@ -256,14 +270,14 @@ const handleFileChange = (event) => {
 
  },[id])*/}
  const { data: friendRequests, error } = useSWR(
-  id ? ["http://localhost:8081/get_requests", id] : null, 
+  id ? ["https://av-drones-react-backend-production.up.railway.app/get_requests", id] : null, 
   ([url, id]) => fetcher(url, id),
-  { refreshInterval: 2000 } 
+  { refreshInterval: 1000 } 
 );
 const {data: friends,error1}= useSWR(
-  username ? ["http://localhost:8081/get_friends",username]:null,
+  username ? ["https://av-drones-react-backend-production.up.railway.app/get_friends",username]:null,
   ([url,username])=>fetcher1(url,username),
-  {refreshInterval: 2000}
+  {refreshInterval: 1000}
 )
 useEffect(() => {
   if (friends) {
@@ -320,8 +334,9 @@ const unreadRequests = friendRequests ? Math.max(friendRequests.length - seenReq
           {activeTab === "Account" && (
           <div className="tab-content">
             
-            <div className="circular-image1">
-             {url &&  <img src={url}  className="circular-image123" />}
+            <div className="circular-image1"  >
+               <a href="" id="refresh-link" style={{ display: "none" }}></a>
+               <img src={url}    className="circular-image123" />
               <input
                 type="file"
                 accept="image/*"
@@ -329,7 +344,7 @@ const unreadRequests = friendRequests ? Math.max(friendRequests.length - seenReq
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
               />
-              <label htmlFor="file-input" className="text-label123" >Upload</label>
+              <label htmlFor="file-input" className="text-label123"   >Upload</label>
              
             </div>
 
